@@ -2,7 +2,7 @@ package kyo.test
 
 import kyo.*
 import kyo.test.interop.*
-import scala.concurrent.duration.*
+
 import zio.ZIO
 import zio.test.Spec
 

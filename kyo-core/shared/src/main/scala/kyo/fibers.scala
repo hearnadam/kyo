@@ -11,7 +11,6 @@ import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import scala.util.*
 import scala.util.control.NonFatal
 import scala.util.control.NoStackTrace
@@ -239,7 +238,7 @@ object Fibers extends Joins[Fibers]:
 
     def sleep(d: Duration): Unit < Fibers =
         initPromise[Unit].map { p =>
-            if d.isFinite then
+            if d.isZero then
                 val run: Unit < IOs =
                     IOs(discard(IOTask(IOs(p.complete(())), Locals.State.empty)))
                 Timers.schedule(d)(run).map { t =>

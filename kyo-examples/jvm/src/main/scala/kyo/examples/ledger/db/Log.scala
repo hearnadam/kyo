@@ -2,7 +2,7 @@ package kyo.examples.ledger.db
 
 import java.io.FileWriter
 import kyo.*
-import scala.concurrent.duration.*
+
 import scala.jdk.CollectionConverters.*
 
 trait Log:

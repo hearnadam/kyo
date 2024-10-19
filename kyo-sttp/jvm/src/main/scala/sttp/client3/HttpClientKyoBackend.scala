@@ -10,12 +10,12 @@ import java.util.concurrent.Executor
 import java.util.zip.GZIPInputStream
 import java.util.zip.InflaterInputStream
 import kyo.*
+import kyo.internal.KyoStreams
 import kyo.internal.KyoSttpMonad
 import kyo.internal.KyoSttpMonad.*
 import sttp.capabilities.WebSockets
 import sttp.client3.HttpClientBackend.EncodingHandler
 import sttp.client3.HttpClientFutureBackend.InputStreamEncodingHandler
-import sttp.client3.internal.NoStreams
 import sttp.client3.internal.emptyInputStream
 import sttp.client3.internal.httpclient.*
 import sttp.client3.testing.SttpBackendStub
@@ -28,7 +28,7 @@ class HttpClientKyoBackend private (
     closeClient: Boolean,
     customizeRequest: HttpRequest => HttpRequest,
     customEncodingHandler: InputStreamEncodingHandler
-) extends HttpClientAsyncBackend[M, Nothing, WebSockets, InputStream, InputStream](
+) extends HttpClientAsyncBackend[M, KyoStreams[Async], WebSockets, InputStream, InputStream](
         client,
         KyoSttpMonad,
         closeClient,
@@ -36,20 +36,20 @@ class HttpClientKyoBackend private (
         customEncodingHandler
     ):
 
-    override val streams: NoStreams = NoStreams
+    override val streams: KyoStreams[Async] = KyoStreams[Async]
 
     override protected val bodyToHttpClient =
-        new BodyToHttpClient[KyoSttpMonad.M, Nothing]:
-            override val streams: NoStreams                  = NoStreams
+        new BodyToHttpClient[KyoSttpMonad.M, KyoStreams[Async]]:
+            override val streams: KyoStreams[Async]          = KyoStreams[Async]
             override given monad: MonadError[KyoSttpMonad.M] = KyoSttpMonad
-            override def streamToPublisher(stream: Nothing) =
-                stream
+            override def streamToPublisher(stream: streams.BinaryStream) =
+                stream.run.map(chunk => HttpRequest.BodyPublishers.ofByteArray(chunk.toArray))
 
     override protected val bodyFromHttpClient =
-        new InputStreamBodyFromHttpClient[KyoSttpMonad.M, Nothing]:
+        new InputStreamBodyFromHttpClient[KyoSttpMonad.M, KyoStreams[Async]]:
             override def inputStreamToStream(is: InputStream) =
                 KyoSttpMonad.error(new IllegalStateException("Streaming is not supported"))
-            override val streams: NoStreams                  = NoStreams
+            override val streams: KyoStreams[Async]          = KyoStreams[Async]
             override given monad: MonadError[KyoSttpMonad.M] = KyoSttpMonad
             override def compileWebSocketPipe(
                 ws: WebSocket[KyoSttpMonad.M],

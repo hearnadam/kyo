@@ -1,5 +1,6 @@
 package kyo
 
+import kyo.internal.KyoStreams
 import scala.util.*
 import sttp.client3.*
 
@@ -10,11 +11,13 @@ class RequestsLiveTest extends Test:
             "success" in run {
                 for
                     port <- startTestServer("/ping", Success("pong"))
-                    r    <- Requests(_.get(uri"http://localhost:$port/ping"))
+                    _    <- Console.println("SUCCESS")
+                    r    <- Requests(_.get(uri"http://localhost:$port/ping").streamBody(KyoStreams[Async])(Stream.empty))
                 yield assert(r == "pong")
             }
             "failure" in run {
                 for
+                    _    <- Console.println("FAILURE")
                     port <- startTestServer("/ping", Failure(new Exception))
                     r    <- Abort.run(Requests(_.get(uri"http://localhost:$port/ping")))
                 yield assert(r.isFail)
@@ -22,6 +25,7 @@ class RequestsLiveTest extends Test:
             "race" in run {
                 val n = 1000
                 for
+                    _    <- Console.println("RACE")
                     port <- startTestServer("/ping", Success("pong"))
                     r    <- Async.race(Seq.fill(n)(Requests(_.get(uri"http://localhost:$port/ping"))))
                 yield assert(r == "pong")
@@ -33,7 +37,7 @@ class RequestsLiveTest extends Test:
     private def startTestServer(
         endpointPath: String,
         response: Try[String],
-        port: Int = 8000
+        port: Int = 8005
     ): Int < (IO & Resource) =
         IO {
 
@@ -63,7 +67,7 @@ class RequestsLiveTest extends Test:
             )
             server.setExecutor(null)
             server.start()
-            Resource.ensure(server.stop(0))
+            Resource.ensure(Console.println("STOPPING SERVER").map(_ => server.stop(0)))
                 .andThen(IO(server.getAddress.getPort()))
         }
 end RequestsLiveTest

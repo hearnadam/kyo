@@ -1,5 +1,6 @@
 package kyo
 
+import kyo.internal.KyoStreams
 import sttp.client3.*
 
 /** Represents a failed HTTP request.
@@ -32,6 +33,7 @@ object Requests:
           *   The response wrapped in an effect
           */
         def send[A](r: Request[A, Any]): Response[A] < (Async & Abort[FailedRequest])
+        def stream[A](r: Request[A, KyoStreams[Async]]): Stream[A, Async] < (Async & Abort[FailedRequest])
 
         /** Wraps the Backend with a meter
           *
@@ -44,6 +46,9 @@ object Requests:
             new Backend:
                 def send[A](r: Request[A, Any]) =
                     m.run(self.send(r))
+
+                def stream[A](r: Request[A, KyoStreams[Async]]) =
+                    m.run(self.stream(r))
     end Backend
 
     /** The default live backend implementation */
@@ -86,6 +91,11 @@ object Requests:
     def apply[E, A](f: BasicRequest => Request[Either[E, A], Any])(using Frame): A < (Async & Abort[FailedRequest | E]) =
         request(f(basicRequest))
 
+    def stream[E, A](f: BasicRequest => Request[Either[E, A], KyoStreams[Async]])(using
+        Frame
+    ) =
+        local.use(_.stream(f(basicRequest)))
+
     /** Sends an HTTP request
       *
       * @tparam E
@@ -97,8 +107,9 @@ object Requests:
       * @return
       *   The response body wrapped in an effect
       */
-    def request[E, A](req: Request[Either[E, A], Any])(using Frame): A < (Async & Abort[FailedRequest | E]) =
+    def request[E, A, R](req: Request[Either[E, A], Any])(using Frame): A < (Async & Abort[FailedRequest | E]) =
         local.use(_.send(req)).map { r =>
             Abort.get(r.body)
         }
+
 end Requests

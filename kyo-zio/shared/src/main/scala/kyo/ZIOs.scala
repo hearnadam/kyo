@@ -16,12 +16,12 @@ object ZIOs:
       * @return
       *   A Kyo effect that, when run, will execute the zio.ZIO
       */
-    def get[E, A](v: => ZIO[Any, E, A])(using f: Frame, t: zio.Trace): A < (Abort[E] & Async) =
+    def get[E, A](v: => ZIO[Any, E, A])(using r: Runtime[Any] = Runtime.default, f: Frame, t: zio.Trace): A < (Abort[E] & Async) =
         IO.Unsafe {
             Unsafe.unsafely {
                 given ce: CanEqual[E, E] = CanEqual.derived
                 val p                    = Promise.Unsafe.init[E, A]()
-                val f                    = Runtime.default.unsafe.fork(v)
+                val f                    = r.unsafe.fork(v)
                 f.unsafe.addObserver { (exit: zio.Exit[E, A]) =>
                     p.completeDiscard(exit.toResult)
                 }
@@ -42,7 +42,7 @@ object ZIOs:
       * @tparam A
       *   The result type
       */
-    inline def get[R: zio.Tag, E, A](v: ZIO[R, E, A])(using Tag[Env[R]], Frame, zio.Trace): A < (Env[R] & Abort[E] & Async) =
+    inline def get[R0, R1, E, A](v: => ZIO[R0 & R1, E, A])(using Runtime[R0]): A < (Env[R1] & Abort[E] & Async) =
         compiletime.error("ZIO environments are not supported yet. Please handle them before calling this method.")
 
     /** Interprets a Kyo computation to ZIO. Note that this method only accepts Abort[E] and Async pending effects. Plase handle any other

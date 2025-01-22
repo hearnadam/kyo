@@ -342,7 +342,7 @@ sealed abstract class Stream[V, -S]:
       * @return
       *   A unit effect that runs the stream and applies f to each value
       */
-    def runForeach[S2](f: V => Unit < S2)(using tag: Tag[Emit[Chunk[V]]], frame: Frame): Unit < (S & S2) =
+    def runForeach[S2, V2](f: V => V2 < S2)(using tag: Tag[Emit[Chunk[V]]], frame: Frame): Unit < (S & S2) =
         runForeachChunk(c => Kyo.foreachDiscard(c)(f))
 
     /** Runs the stream and applies the given function to each emitted chunk.
